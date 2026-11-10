@@ -20,7 +20,7 @@ while [ "$#" -gt 0 ]; do
     --help|-h)
       cat <<'HELP'
 OhMyDots account service installer
-  curl -fsSL https://raw.githubusercontent.com/hyuntroll/oh-my-dots/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/omdots/oh-my-dots/refs/heads/main/install.sh | bash
 
 Options:
   --dir /absolute/path        Installation folder (default ~/.ohmydots)
@@ -45,7 +45,7 @@ if "$dry_run"; then
   exit 0
 fi
 for binary in curl tar; do command -v "$binary" >/dev/null || { echo "Required: $binary" >&2; exit 1; }; done
-repo='https://github.com/hyuntroll/oh-my-dots.git'
+repo='https://github.com/omdots/oh-my-dots.git'
 if [ -n "$source_dir" ]; then
   [ -f "$source_dir/package.json" ] && [ -f "$source_dir/tools/service-setup.mjs" ] || { echo 'Invalid source export.' >&2; exit 1; }
   source_dir=$(cd "$source_dir" && pwd -P)
@@ -63,14 +63,17 @@ if [ -n "$source_dir" ]; then
   fi
 elif [ -e "$dest" ]; then
   command -v git >/dev/null && [ -d "$dest/.git" ] || { echo 'Destination already exists. Use a fresh --dir or update that installation explicitly.' >&2; exit 1; }
-  [ "$(git -C "$dest" remote get-url origin)" = "$repo" ] || { echo 'Destination has a different remote.' >&2; exit 1; }
+  case "$(git -C "$dest" remote get-url origin)" in
+    "$repo"|https://github.com/hyuntroll/oh-my-dots.git) ;;
+    *) echo 'Destination has a different remote.' >&2; exit 1 ;;
+  esac
   [ "$(git -C "$dest" branch --show-current)" = main ] || { echo 'Destination must be on main.' >&2; exit 1; }
   [ -z "$(git -C "$dest" status --porcelain)" ] || { echo 'Save local changes before updating; nothing was reset.' >&2; exit 1; }
   git -C "$dest" pull --ff-only </dev/null
 else
   task_tmp=$(mktemp -d)
   trap 'rm -rf "$task_tmp"' EXIT
-  curl -fL --retry 3 -o "$task_tmp/source.tar.gz" https://github.com/hyuntroll/oh-my-dots/archive/refs/heads/main.tar.gz
+  curl -fL --retry 3 -o "$task_tmp/source.tar.gz" https://github.com/omdots/oh-my-dots/archive/refs/heads/main.tar.gz
   mkdir -p "$dest"
   tar -xzf "$task_tmp/source.tar.gz" --strip-components=1 -C "$dest"
   rm -rf "$task_tmp"
