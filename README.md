@@ -7,7 +7,7 @@
 ## 한 줄로 서비스 설치
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hyuntroll/oh-my-dots/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/omdots/oh-my-dots/refs/heads/main/install.sh | bash
 ```
 
 설치기가 필요한 Node·OpenCode 2를 준비하고, 관리자 계정·모델 제공자·서버 주소·실행 방식을 안내합니다. API 키를 넣으면 모델 목록을 조회하고 검색·선택할 수 있습니다. OpenAI, Anthropic, OpenRouter, Ollama, OpenAI 호환 서버를 지원합니다. 자동 조회가 없는 서버는 고급 설정에서 모델을 직접 추가합니다.
@@ -48,7 +48,7 @@ Dot 프로필의 **컴퓨터** 버튼에서 실제 1280×960 Linux 화면을 엽
 
 계정과 세션은 `.data/service/accounts.sqlite`, 계정별 기록은 `.data/service/accounts/<account-id>/`에 저장합니다. 설치 중 `--legacy-dir`를 선택하면 기존 기록을 첫 관리자 계정에 연결합니다. 이 소유자의 기존 브라우저 캐릭터·화면 설정은 첫 로그인 때 서버에 가져오며, 계정 화면에서 다시 가져올 수도 있습니다. `.data/`, 인증 정보와 빌드 캐시는 Git에 올리지 않습니다. 새 계정은 OpenCode 데이터 경로도 분리합니다. `legacyInference`를 명시한 기존 소유자만 기존에 허용한 로컬 OpenCode 연결을 계속 사용합니다.
 
-이전 앱은 [codex/dots-pre-original-ui 브랜치](https://github.com/hyuntroll/oh-my-dots/tree/codex/dots-pre-original-ui)에 남아 있습니다. 이전 `.local/`과 PostgreSQL 데이터는 자동 삭제하거나 새 SQLite로 변환하지 않습니다. 별도로 쓰던 이번 Dots의 `.data/`를 계속 사용하는 방법은 [이전 안내](docs/migration.md)에 있습니다.
+이전 앱은 [codex/dots-pre-original-ui 브랜치](https://github.com/omdots/oh-my-dots/tree/codex/dots-pre-original-ui)에 남아 있습니다. 이전 `.local/`과 PostgreSQL 데이터는 자동 삭제하거나 새 SQLite로 변환하지 않습니다. 별도로 쓰던 이번 Dots의 `.data/`를 계속 사용하는 방법은 [이전 안내](docs/migration.md)에 있습니다.
 
 설정·프로필 메뉴·플러그인 탐색 화면은 원본 구성요소를 사용합니다. 플러그인 설치·OAuth, 첨부·비밀 입력·Grok 에이전트 간 메시지의 Dots 동기화는 아직 연결하지 않았습니다. 원본 클라우드 하네스 전체가 복원된 것은 아닙니다.
 

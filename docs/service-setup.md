@@ -7,14 +7,14 @@ OhMyDots를 하나의 서버에 설치한 뒤 같은 주소와 계정으로 로�
 macOS 또는 Linux에서 다음을 실행합니다. `curl`과 `tar`가 필요합니다. 사용할 수 있는 Node.js 24.15+와 OpenCode 2가 없으면, 설치 폴더 안에 Node 24.22.1과 OpenCode 2.0.32를 준비합니다. Node 자동 다운로드는 macOS와 glibc Linux의 x64·arm64를 지원하며 Alpine/musl에서는 먼저 배포판 패키지로 Node24.15+를 준비합니다. Node 아카이브는 공식 배포 파일의 고정 SHA-256과 비교합니다. 기존 전역 런타임은 교체하지 않습니다.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hyuntroll/oh-my-dots/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/omdots/oh-my-dots/refs/heads/main/install.sh | bash
 ```
 
 설치기는 실행기·공개 주소를 고른 뒤 제공자 연결 주소와 API 키를 받고, 해당 연결로 조회한 모델 목록에서 선택하도록 안내합니다. 목록은 검색과 페이지 이동을 지원합니다. 조회 실패나 빈 목록일 때만 모델 ID를 직접 입력해 계속할 수 있습니다. 질문과 숨김 비밀번호·API 키 입력은 `/dev/tty`를 사용하므로 파이프로 실행해도 스크립트 본문을 답변으로 읽지 않습니다. 연결을 나중에 설정하려면 `later`를 선택합니다. API 키는 설치 화면에 표시하거나 로그에 출력하지 않습니다.
 
 ```sh
 # 별도 설치 위치, 파일만 준비
-curl -fsSL https://raw.githubusercontent.com/hyuntroll/oh-my-dots/main/install.sh | bash -s -- --dir "$HOME/ohmydots-server" --no-start
+curl -fsSL https://raw.githubusercontent.com/omdots/oh-my-dots/refs/heads/main/install.sh | bash -s -- --dir "$HOME/ohmydots-server" --no-start
 
 # 아무 변경도 하지 않는 설치 계획
 bash install.sh --dry-run --dir /tmp/ohmydots-preview
@@ -45,7 +45,7 @@ DOTS_GROK_SOURCE=/absolute/grok-source DOTS_GROK_NODE=/absolute/node26 \
 ## Linux에서 상시 실행
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hyuntroll/oh-my-dots/main/install.sh | bash -s -- --mode systemd
+curl -fsSL https://raw.githubusercontent.com/omdots/oh-my-dots/refs/heads/main/install.sh | bash -s -- --mode systemd
 systemctl --user status ohmydots.service
 journalctl --user -u ohmydots.service -f
 ```
@@ -59,7 +59,7 @@ journalctl --user -u ohmydots.service -f
 Docker Engine 또는 Docker Desktop과 Compose V2가 준비되어 있어야 합니다. 설치기가 Docker daemon을 설치하거나 Docker socket을 앱 컨테이너에 전달하지 않습니다.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hyuntroll/oh-my-dots/main/install.sh | bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/omdots/oh-my-dots/refs/heads/main/install.sh | bash -s -- \
   --mode docker --public-url https://dots.example.com
 ```
 
