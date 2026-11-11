@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { readFile, realpath, writeFile } from 'node:fs/promises';
 import { join, sep } from 'node:path';
-import {providerSettings,inferenceEnvironment} from './inference-config.mjs';
+import {providerSettings,inferenceEnvironment} from '../engine-adapters/opencode-config.mjs';
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
 const args = process.argv.slice(2);

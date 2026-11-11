@@ -6,7 +6,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Accounts } from './accounts.mjs';
 import { createApp, json, readJson } from './main.mjs';
 import { createRenderer } from '../exact-host/server.mjs';
-import { OpenCodeProvider } from './provider.mjs';
+import { OpenCodeProvider } from '../engine-adapters/opencode.mjs';
 import { GrokProvider } from './grok-runtime.mjs';
 import {readProviders,saveProvider,publicProviders} from './provider-settings.mjs';
 import {discoverModels} from './model-discovery.mjs';

@@ -6,7 +6,7 @@ import http from 'node:http';
 import { mkdtemp,writeFile,rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { OpenCodeProvider } from '../server/provider.mjs';
+import { OpenCodeProvider } from '../engine-adapters/opencode.mjs';
 test('real OpenCode 2 sends configured inference to the local compatible provider',async t=>{
   const directory=await mkdtemp(join(tmpdir(),'dots-provider-check-'));const requests=[];
   const server=http.createServer(async(req,res)=>{
