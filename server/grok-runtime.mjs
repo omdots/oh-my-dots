@@ -3,7 +3,7 @@ import { access } from 'node:fs/promises';
 import { Runtime } from './runtime.mjs';
 import { GrokHost, delay } from './grok-host.mjs';
 import { buildRoot } from '../tools/grok-prepare.mjs';
-import { OpenCodeProvider } from './provider.mjs';
+import { OpenCodeProvider } from '../engine-adapters/opencode.mjs';
 import { now } from './store.mjs';
 import { randomBytes } from 'node:crypto';
 import { computerStatus } from './computer.mjs';

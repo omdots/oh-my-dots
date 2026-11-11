@@ -13,6 +13,8 @@
 !exact-host/**
 !server
 !server/**
+!engine-adapters
+!engine-adapters/**
 !service-ui
 !service-ui/**
 !tools

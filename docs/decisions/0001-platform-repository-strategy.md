@@ -18,7 +18,7 @@ GitHub 조직 `omdots`를 여러 에이전트 제품을 관리할 수 있는 범
 ## 현재 코드에서 먼저 정리할 경계
 
 - **프론트엔드와 백엔드.** 기본 서비스는 로그인 화면을 직접 제공하고 원본 렌더러를 같은 주소에서 프록시한다. 분리 후에도 로그인 쿠키, 쓰기 요청의 출처 검증, `/api/events` 재연결이 같은 공개 주소에서 동작해야 한다. 기존 서비스와 실제 렌더러가 사용하는 API부터 기준으로 삼는다. [계정 서비스](../../server/service.mjs) · [렌더러 호스트](../../exact-host/server.mjs) · [화면의 API 연결](../../exact-host/local-adapter.mjs)
-- **백엔드와 엔진 어댑터.** `GrokRuntime`은 공통 `Runtime`을 상속하고 저장소와 컴퓨터 승인 경로에 연결된다. 백엔드가 소유하는 작업 상태·승인과 엔진이 담당하는 실행·취소·재개 사이의 호출 경계를 먼저 정한다. 두 엔진의 반환값과 오류를 기존 서비스 테스트로 검증한 뒤 어댑터를 추출한다. [공통 런타임](../../server/runtime.mjs) · [Grok 런타임](../../server/grok-runtime.mjs) · [OpenCode 연결](../../server/provider.mjs)
+- **백엔드와 엔진 어댑터.** `GrokRuntime`은 공통 `Runtime`을 상속하고 저장소와 컴퓨터 승인 경로에 연결된다. 백엔드가 소유하는 작업 상태·승인과 엔진이 담당하는 실행·취소·재개 사이의 호출 경계를 먼저 정한다. 두 엔진의 반환값과 오류를 기존 서비스 테스트로 검증한 뒤 어댑터를 추출한다. [공통 런타임](../../server/runtime.mjs) · [Grok 런타임](../../server/grok-runtime.mjs) · [OpenCode 연결](../../engine-adapters/opencode.mjs)
 
 ## 이전 순서
 

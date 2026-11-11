@@ -3,7 +3,7 @@ import { resolve,join,extname } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { Store,id,now } from './store.mjs';
 import { Runtime } from './runtime.mjs';
-import { OpenCodeProvider } from './provider.mjs';
+import { OpenCodeProvider } from '../engine-adapters/opencode.mjs';
 import { GrokRuntime,GrokProvider } from './grok-runtime.mjs';
 const ROOT=resolve(new URL('..',import.meta.url).pathname);
 export function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));}

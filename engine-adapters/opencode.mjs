@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { providerSettings, inferenceEnvironment } from './inference-config.mjs';
+import { providerSettings, inferenceEnvironment } from './opencode-config.mjs';
 const exec=promisify(execFile);
 export function productConfig(system,bridge){
  const names=['dots_read_file','dots_list_files','dots_write_file','dots_shell','dots_ask_user','dots_send_message','dots_computer_status','dots_computer_screenshot','dots_computer_action'];

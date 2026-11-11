@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp,writeFile,readFile,rm,symlink,mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { OpenCodeProvider,productConfig } from '../server/provider.mjs';
+import { OpenCodeProvider,productConfig } from '../engine-adapters/opencode.mjs';
 import { Store } from '../server/store.mjs';
 import { Runtime } from '../server/runtime.mjs';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
