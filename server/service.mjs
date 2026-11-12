@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Accounts } from './accounts.mjs';
+import { createSharedAuth } from './shared-auth.mjs';
 import { createApp, json, readJson } from './main.mjs';
 import { createRenderer } from '../exact-host/server.mjs';
 import { OpenCodeProvider } from '../engine-adapters/opencode.mjs';
@@ -14,7 +15,7 @@ const root=fileURLToPath(new URL('..',import.meta.url));
 const listen=server=>new Promise((done,fail)=>{server.once('error',fail);server.listen(0,'127.0.0.1',()=>done(server.address().port));});
 const error=(message,status=400)=>Object.assign(Error(message),{status});
 
-export async function createService({directory=process.env.DOTS_SERVICE_DIR||join(root,'.data/service'),publicUrl=process.env.DOTS_PUBLIC_URL||'http://127.0.0.1:3420',engine=process.env.DOTS_RUNTIME||'opencode',appFactory=createApp,providerFactory,legacyDir,legacyInference=false,registration=false}={}){
+export async function createService({directory=process.env.DOTS_SERVICE_DIR||join(root,'.data/service'),publicUrl=process.env.DOTS_PUBLIC_URL||'http://127.0.0.1:3420',engine=process.env.DOTS_RUNTIME||'opencode',appFactory=createApp,providerFactory,legacyDir,legacyInference=false,registration=false,sharedAuth=process.env.DOTS_AUTH_ISSUER?{issuer:process.env.DOTS_AUTH_ISSUER,secret:process.env.DOTS_AUTH_CLIENT_SECRET,mcpResource:process.env.DOTS_MCP_URL}:undefined}={}){
   directory=resolve(directory);const origin=new URL(publicUrl).origin;
   const secure=new URL(origin).protocol==='https:';
   if(!secure&&!['localhost','127.0.0.1','[::1]'].includes(new URL(origin).hostname))throw Error('공개 서비스에는 HTTPS 주소가 필요합니다.');
@@ -27,6 +28,12 @@ export async function createService({directory=process.env.DOTS_SERVICE_DIR||joi
   let bootstrapToken;try{bootstrapToken=(await readFile(bootstrapPath,'utf8')).trim();}catch(e){if(e.code!=='ENOENT')throw e;bootstrapToken=randomBytes(32).toString('hex');await writeFile(bootstrapPath,bootstrapToken,{mode:0o600,flag:'wx'});}
   const cookieName=secure?'__Host-dots_session':'dots_session';
   const cookie=(token,age=604800)=>`${cookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${secure?'; Secure':''}`;
+  function setSession(res,userId,oldToken){
+    if(oldToken){accounts.logout(oldToken);closeStreams(oldToken);}
+    const auth=accounts.session(userId);
+    res.appendHeader('Set-Cookie',cookie(auth.token));
+  }
+  const auth=sharedAuth&&createSharedAuth({...sharedAuth,origin,accounts,setSession});
   function closeStreams(token){for(const res of streams.get(token)||[])res.destroy();streams.delete(token);}
   async function appFor(user){
     if(!apps.has(user.id))apps.set(user.id,(async()=>{
@@ -35,7 +42,7 @@ export async function createService({directory=process.env.DOTS_SERVICE_DIR||joi
       const provider=providerFactory?.(user,dataDir)||new (engine==='grok'?GrokProvider:OpenCodeProvider)({isolationDir});
       const gatewayToken=randomBytes(32).toString('hex');
       const fresh=await stat(join(dataDir,'dots.sqlite')).then(()=>false,e=>{if(e.code==='ENOENT')return true;throw e;});
-      const app=appFactory({dataDir,engine,provider,computerEnabled:Boolean(accounts.dataPath(user.id)),gatewayToken});app.gatewayToken=gatewayToken;
+      const app=appFactory({dataDir,engine,provider,computerEnabled:Boolean(accounts.dataPath(user.id)),gatewayToken,omdProvider:auth?.provider&&((name,args,signal)=>auth.provider.call(user.id,name,args,signal))});app.gatewayToken=gatewayToken;
       const defaults=await readProviders(providerPath);if(fresh&&defaults.defaultModel)app.store.patch('settings','app',{model:defaults.defaultModel});
       app.runtime.inferenceDir=isolationDir;
       await listen(app.server);return app;
@@ -66,7 +73,8 @@ export async function createService({directory=process.env.DOTS_SERVICE_DIR||joi
     const token=(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName+'='))?.slice(cookieName.length+1);
     const session=accounts.resolve(token),user=session?.user;
     if(path==='/healthz')return json(res,200,{ok:true,service:'ohmydots'});
-    if(path==='/api/session'&&req.method==='GET')return json(res,200,{mode:'service',authenticated:Boolean(user),user:user||null,legacy:Boolean(user&&accounts.dataPath(user.id)),needsSetup:accounts.count()===0,registration});
+    if(auth&&await auth.handle(req,res,url,user,token))return;
+    if(path==='/api/session'&&req.method==='GET')return json(res,200,{mode:'service',authenticated:Boolean(user),user:user||null,legacy:Boolean(user&&accounts.dataPath(user.id)),needsSetup:accounts.count()===0,registration,...(auth?{sharedAuth:true,sharedAuthLinked:Boolean(user&&auth.linked(user.id)),...(auth.provider?{omdProvider:true,omdProviderConnected:Boolean(user&&auth.provider.connected(user.id))}:{})}:{})});
     if(['/api/auth/login','/api/auth/setup','/api/auth/register'].includes(path)&&req.method==='POST'){
       const address=req.socket.remoteAddress;const previous=rates.get(address);const rate=previous?.until>Date.now()?previous:{count:0,until:Date.now()+15*60000};if(++rate.count>20)throw error('시도가 너무 많습니다. 15분 후 다시 시도하세요.',429);rates.set(address,rate);
       if(rates.size>10000)for(const [key,v]of rates)if(v.until<Date.now())rates.delete(key);
@@ -80,7 +88,7 @@ export async function createService({directory=process.env.DOTS_SERVICE_DIR||joi
         if(!registration||!accounts.count())throw error('관리자에게 계정 생성을 요청하세요.',403);
         account=await accounts.create({username:b.username,password:b.password,displayName:b.displayName});
       }else{account=await accounts.verify(b.username,b.password);if(!account)throw error('아이디 또는 비밀번호를 확인하세요.',401);}
-      if(token){accounts.logout(token);closeStreams(token);}const auth=accounts.session(account.id);res.setHeader('Set-Cookie',cookie(auth.token));return json(res,200,{user:account});
+      setSession(res,account.id,token);return json(res,200,{user:account});
     }
     if(['/login','/setup'].includes(path)||path.startsWith('/service-assets/')){
       if(path.startsWith('/service-assets/')){const name=path.slice(16);if(!['login.mjs','service.css'].includes(name))throw error('Not found',404);res.setHeader('Content-Type',name.endsWith('.css')?'text/css':'text/javascript');return res.end(await readFile(join(root,'service-ui',name)));}
@@ -90,6 +98,10 @@ export async function createService({directory=process.env.DOTS_SERVICE_DIR||joi
     if(!user){if(path.startsWith('/api/')||path.startsWith('/internal/'))throw error('로그인이 필요합니다.',401);res.writeHead(302,{Location:'/login'}).end();return;}
     if(path.startsWith('/internal/'))throw error('Not found',404);
     if(path==='/api/auth/logout'&&req.method==='POST'){accounts.logout(token);res.setHeader('Set-Cookie',cookie('',0));json(res,200,{ok:true});closeStreams(token);return;}
+    if(path==='/api/omd-provider'&&req.method==='GET'&&auth?.provider){
+      try{return json(res,200,await auth.provider.call(user.id,'whoami',{}));}
+      catch(e){throw error(e.message,502);}
+    }
     if(path==='/api/account'){
       if(req.method==='GET')return json(res,200,user);
       if(req.method==='PATCH'){const b=await readJson(req);if(b.password!==undefined&&!await accounts.verify(user.username,b.currentPassword))throw error('현재 비밀번호가 올바르지 않습니다.',403);const updated=await accounts.update(user.id,b);json(res,200,{user:updated});if(b.password!==undefined){for(const key of streams.keys())if(!accounts.resolve(key))closeStreams(key);}return;}
@@ -110,7 +122,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const configPath=resolve(process.env.DOTS_SERVICE_CONFIG||join(root,'.data/service/config.json'));
   let config={};try{config=JSON.parse(await readFile(configPath,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}
   for(const [key,value]of Object.entries(config.env||{}))process.env[key]=String(value);
-  const service=await createService(config);const port=Number(process.env.PORT||config.port||3420);const host=process.env.HOST||config.host||'127.0.0.1';
+  const service=await createService(config);delete process.env.DOTS_AUTH_CLIENT_SECRET;const port=Number(process.env.PORT||config.port||3420);const host=process.env.HOST||config.host||'127.0.0.1';
   service.server.listen(port,host,()=>{console.log('OhMyDots service: '+(config.publicUrl||'http://127.0.0.1:'+port));if(!service.accounts.count())console.log('초기 설정 코드 파일: '+service.bootstrapPath);});
   for(const signal of ['SIGTERM','SIGINT'])process.once(signal,async()=>{await service.close();process.exit(0);});
 }

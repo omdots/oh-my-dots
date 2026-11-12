@@ -7,6 +7,7 @@ import { providerSettings, inferenceEnvironment } from './opencode-config.mjs';
 const exec=promisify(execFile);
 export function productConfig(system,bridge){
  const names=['dots_read_file','dots_list_files','dots_write_file','dots_shell','dots_ask_user','dots_send_message','dots_computer_status','dots_computer_screenshot','dots_computer_action'];
+ if(bridge?.environment?.DOTS_OMD_PROVIDER==='1')names.push('dots_omd_github_get_issue');
  const permissions=[{action:'*',resource:'*',effect:'deny'},...(bridge?names:[]).map(action=>({action,resource:'*',effect:'allow'}))];
  return {agents:{dots:{mode:'primary',system,permissions}},permissions,policies:[{action:'tool.use',resource:'*',effect:'deny'},{action:'integration.use',resource:'*',effect:'deny'},...(bridge?names:[]).map(name=>({action:'tool.use',resource:name+':*',effect:'allow'})),...(bridge?[{action:'integration.use',resource:'mcp:dots',effect:'allow'}]:[])],mcp:{servers:bridge?{dots:bridge}:{}},share:'disabled',snapshots:false,lsp:false,formatter:false,update:'disable'};
 }

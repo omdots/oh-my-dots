@@ -115,3 +115,15 @@ node tools/service-setup.mjs --non-interactive --input /private/ohmydots-input.j
 2026-10-28 별도 임시 폴더에 새 설치를 두 번 수행해 의존성 설치, 빌드, 원본 UI 1,479개·캐릭터 자산465개 검증과 설정 생성을 완료했습니다. 테스트용 계정 생성과 기존 SQLite를 변경하지 않는 연결도 확인했습니다. 실제 TTY에서는 숨김 키 입력 뒤 로컬 HTTP 서버의45개 모델을 조회하고 페이지 이동·검색·선택한 모델 저장까지 확인했습니다.
 
 Docker 이미지도 실제로 빌드하고 호스트 포트를 공개하지 않은 임시 컨테이너에서 `/healthz`, Node24.22.1, OpenCode2.0.32 실행을 확인한 뒤 컨테이너를 종료했습니다. 임의 UID와 읽기 전용 root filesystem에서 OpenCode가 실행되도록 기본 XDG 경로를 `/tmp`에 두며, 계정별 추론 경로는 영구 데이터 폴더로 분리합니다. 이미지에 기존 `.data`, `.local`, 실험 폴더, 이전 앱·가상환경이 포함되지 않는 것도 확인했습니다. 공개 DNS·인증서 발급, 실제 유료 제공자 호출, Linux 재부팅 이후의 systemd 실행은 이 로컬 검증에 포함하지 않았습니다.
+
+## OhMyDots 공통 계정과 MCP Provider
+
+[OhMyDots MCP 설치 안내](https://github.com/omdots/oh-my-dots-mcp#quick-start)에 따라 Auth와 MCP를 실행합니다. Auth의 `OMD_WEB_REDIRECT`는 서비스 공개 주소에 `/api/auth/omd/callback`을 붙인 URL입니다. `OMD_WEB_MCP=1`을 설정하면 OMD 웹 클라이언트에 읽기 도구 사용 권한을 요청할 수 있습니다.
+
+OMD 서비스에는 다음 값을 넣고 다시 시작합니다.
+
+- `DOTS_AUTH_ISSUER`에 공통 Auth 주소를 넣습니다. 로컬 주소는 `http://127.0.0.1:4380`입니다.
+- `DOTS_AUTH_CLIENT_SECRET`에 Auth의 `OMD_WEB_SECRET`과 같은 값을 넣습니다.
+- `DOTS_MCP_URL`에 Provider 주소를 넣습니다. 로컬 주소는 `http://127.0.0.1:4381/mcp`입니다.
+
+기존 로컬 계정으로 로그인한 뒤 **설정 → 계정 → OhMyDots 계정**에서 연결합니다. 이후 로그인 화면의 **OhMyDots 계정으로 로그인**으로 같은 계정을 열 수 있습니다. Provider 연결은 계정 설정에서 확인할 수 있고 OpenCode 엔진에는 공개 GitHub 이슈 읽기 도구가 제공됩니다. Provider 인증을 갱신하려면 OhMyDots 계정으로 다시 로그인합니다.

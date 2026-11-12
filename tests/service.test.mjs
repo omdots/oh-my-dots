@@ -73,3 +73,16 @@ test('logout terminates an existing authenticated event stream',async t=>{
   await app.request('/api/auth/logout',{cookie:owner.cookie,body:{}});
   await Promise.race([reader.read().catch(()=>null),new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('logged-out stream remained open')),2000);timer.unref();})]);
 });
+
+test('shared identities link explicitly and cannot be claimed by another local account',async t=>{
+  const app=await setup(t,{sharedAuth:{issuer:'http://127.0.0.1:4380',secret:'fixture-secret'}});
+  const owner=await app.request('/api/auth/setup',{body:{...admin,setupCode:app.bootstrap}});
+  const member=await app.request('/api/accounts',{cookie:owner.cookie,body:{username:'member',password:'a-long-member-password'}});
+  assert.equal((await app.request('/api/session',{cookie:owner.cookie})).value.sharedAuthLinked,false);
+  app.accounts.linkIdentity('http://127.0.0.1:4380','subject',owner.value.user.id);
+  assert.equal((await app.request('/api/session',{cookie:owner.cookie})).value.sharedAuthLinked,true);
+  assert.throws(()=>app.accounts.linkIdentity('http://127.0.0.1:4380','subject',member.value.user.id),{status:409});
+  const callback=await app.request('/api/auth/omd/callback?code=unsolicited&state=unknown');
+  assert.equal(callback.response.headers.get('location'),'/login?omd=error');
+  assert.equal((await app.request('/api/session')).value.authenticated,false);
+});
