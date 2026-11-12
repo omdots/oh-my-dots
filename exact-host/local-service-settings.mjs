@@ -88,9 +88,13 @@ export async function installOriginalServiceSettings({initial,shared,React,jsx,a
       }
       await onRefresh?.();setNotice('이전 화면 설정을 현재 계정에 저장했습니다.');
     }catch(e){setNotice(e.message);}};
+    const session=accountState.session;
+    const checkProvider=async()=>{try{await api('/api/omd-provider');setNotice('OhMyDots Provider 연결을 확인했습니다.');}catch(e){setNotice(e.message);}};
     return jsx(React.Fragment,{children:[group('로컬 계정',[
       row('로그인 아이디',accountState.session.user.username),
       row('비밀번호',button('변경',()=>setPasswordDialog(true))),
+      session.sharedAuth&&row('OhMyDots 계정',session.sharedAuthLinked?'연결됨':button('연결',()=>location.assign('/api/auth/omd/link'))),
+      session.omdProvider&&row('OhMyDots Provider',session.omdProviderConnected?button('연결 확인',checkProvider):button('연결',()=>location.assign('/api/auth/omd/link'))),
       accountState.session.user.admin&&row('사용자 계정',button('관리',()=>setUserDialog(true))),
       accountState.session.legacy&&row('이전 화면 설정',button('이 브라우저에서 가져오기',importBrowser)),
       row('로그아웃',button('로그아웃',accountState.logout))

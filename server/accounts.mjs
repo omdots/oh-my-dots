@@ -13,11 +13,28 @@ export class Accounts {
   constructor(directory) {
     mkdirSync(directory,{recursive:true,mode:0o700});
     const file=join(directory,'accounts.sqlite');this.db=new DatabaseSync(file);chmodSync(file,0o600);
-    this.db.exec(`PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,display_name TEXT NOT NULL,password TEXT NOT NULL,admin INTEGER NOT NULL DEFAULT 0,data_path TEXT,created_at INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires INTEGER NOT NULL);`);
+    this.db.exec(`PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,display_name TEXT NOT NULL,password TEXT NOT NULL,admin INTEGER NOT NULL DEFAULT 0,data_path TEXT,created_at INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS identities(issuer TEXT NOT NULL,subject TEXT NOT NULL,user_id TEXT NOT NULL REFERENCES users(id),PRIMARY KEY(issuer,subject),UNIQUE(issuer,user_id)); CREATE TABLE IF NOT EXISTS provider_grants(issuer TEXT NOT NULL,user_id TEXT NOT NULL,token TEXT NOT NULL,PRIMARY KEY(issuer,user_id),FOREIGN KEY(issuer,user_id) REFERENCES identities(issuer,user_id));`);
   }
   count(){return this.db.prepare('SELECT count(*) AS n FROM users').get().n;}
   list(){return this.db.prepare('SELECT * FROM users ORDER BY created_at').all().map(publicUser);}
   user(id){return publicUser(this.db.prepare('SELECT * FROM users WHERE id=?').get(id));}
+  identityUser(issuer,subject){
+    const row=this.db.prepare('SELECT user_id FROM identities WHERE issuer=? AND subject=?').get(issuer,subject);
+    return row&&this.user(row.user_id);
+  }
+  linkIdentity(issuer,subject,userId){
+    this.db.prepare('INSERT INTO identities VALUES(?,?,?) ON CONFLICT(issuer,subject) DO NOTHING').run(issuer,subject,userId);
+    if(this.identityUser(issuer,subject)?.id!==userId)throw fail('이미 연결된 OhMyDots 계정입니다.',409);
+  }
+  identityLinked(issuer,userId){
+    return Boolean(this.db.prepare('SELECT 1 FROM identities WHERE issuer=? AND user_id=?').get(issuer,userId));
+  }
+  providerGrant(issuer,userId){
+    return this.db.prepare('SELECT token FROM provider_grants WHERE issuer=? AND user_id=?').get(issuer,userId)?.token;
+  }
+  saveProviderGrant(issuer,userId,token){
+    this.db.prepare('INSERT INTO provider_grants VALUES(?,?,?) ON CONFLICT(issuer,user_id) DO UPDATE SET token=excluded.token').run(issuer,userId,token);
+  }
   dataPath(id){return this.db.prepare('SELECT data_path FROM users WHERE id=?').get(id)?.data_path;}
   async password(value){
     if(typeof value!=='string'||value.length<12||Buffer.byteLength(value)>1024)throw fail('비밀번호는 12자 이상, 1024바이트 이하로 입력하세요.');

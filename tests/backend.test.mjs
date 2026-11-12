@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../server/main.mjs';
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-async function setup(t,provider={status:async()=>({provider:'opencode',installed:true,models:['fake/model']}),run:async()=> '안녕하세요!'}){let dataDir=await mkdtemp(join(tmpdir(),'dots-test-'));let app=createApp({dataDir,provider});await new Promise(r=>app.server.listen(0,'127.0.0.1',r));let base='http://127.0.0.1:'+app.server.address().port;let request=async(path,body,method=body?'POST':'GET')=>{let r=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,value:await r.json()};};t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});return {...app,base,request};}
+async function setup(t,provider={status:async()=>({provider:'opencode',installed:true,models:['fake/model']}),run:async()=> '안녕하세요!'},appOptions={}){let dataDir=await mkdtemp(join(tmpdir(),'dots-test-'));let app=createApp({dataDir,provider,...appOptions});await new Promise(r=>app.server.listen(0,'127.0.0.1',r));let base='http://127.0.0.1:'+app.server.address().port;let request=async(path,body,method=body?'POST':'GET')=>{let r=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,value:await r.json()};};t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});return {...app,base,request};}
 async function waitTask(app,id,status){for(let n=0;n<150;n++){let t=app.store.get('task',id);if(t.status===status)return t;await delay(20);}assert.fail('task did not become '+status+': '+JSON.stringify(app.store.get('task',id)));}
 async function profile(app,name='Dot'){return (await app.request('/api/profiles',{display_name:name})).value;}
 async function message(app,p,text='안녕'){return (await app.request('/api/messaging/rooms/'+p.room_id+'/messages',{content:{text},request_id:'req-'+text,idempotency_token:'nonce-'+text})).value;}
@@ -52,4 +52,33 @@ test('ask_user pauses for an actual API response and consumes the answer exactly
  app=await setup(t,provider);let p=await profile(app);let sent=await message(app,p,'질문으로 확인해줘');let waiting=await waitTask(app,sent.task.id,'needs_input');let question=waiting.items.find(i=>i.type==='question'&&i.status==='pending');assert.ok(question);assert.equal(question.question,'어떤 답변을 사용할까요?');assert.equal(app.store.get('profile',p.id).status,'needs_input');assert.equal(consumed,0);assert.equal(app.store.all('message').length,1);
  let response=await app.request('/api/approvals/'+question.id+'/respond',{decision:'allow',value:'테스트답변'});assert.equal(response.status,200);let task=await waitTask(app,sent.task.id,'completed');assert.equal(consumed,1);assert.equal(task.items.find(i=>i.id===question.id).value,'테스트답변');assert.equal(task.items.find(i=>i.id===question.id).status,'allowed');assert.deepEqual(task.items.find(i=>i.type==='tool_call'&&i.name==='ask_user').result,{decision:'allow',answer:'테스트답변'});assert.equal(app.store.all('message').at(-1).content.text,'사용자 답변: 테스트답변');
  let duplicate=await app.request('/api/approvals/'+question.id+'/respond',{decision:'allow',value:'덮어쓰기'});assert.equal(duplicate.status,409);assert.equal(consumed,1);assert.equal(app.store.all('message').length,2);assert.equal(app.store.get('task',task.id).items.find(i=>i.id===question.id).value,'테스트답변');
+});
+
+test('configured Dot tools send a public issue read through the first-party Provider', async t => {
+  const args = {owner:'nodejs',repo:'node',number:42};
+  const issue = {title:'Verified issue',url:'https://github.com/nodejs/node/issues/42'};
+  const app = await setup(t, {
+    status:async()=>({installed:true,models:[]}),
+    run:async({bridge,system})=>{
+      assert.equal(bridge.environment.DOTS_OMD_PROVIDER,'1');
+      assert.match(system,/omd_github_get_issue/);
+      const response=await fetch(bridge.environment.DOTS_TOOL_URL,{
+        method:'POST',
+        headers:{Authorization:'Bearer '+bridge.environment.DOTS_TOOL_TOKEN,'Content-Type':'application/json'},
+        body:JSON.stringify({name:'dots_omd_github_get_issue',arguments:args}),
+      });
+      const value=await response.json();
+      assert.deepEqual(JSON.parse(value.content[0].text),issue);
+      return issue.title;
+    },
+  }, {omdProvider:async(name,requested,signal)=>{
+    assert.equal(name,'github_get_issue');
+    assert.deepEqual(requested,args);
+    assert.equal(signal.aborted,false);
+    return issue;
+  }});
+  const p=await profile(app);
+  const sent=await message(app,p,'Read this issue');
+  const task=await waitTask(app,sent.task.id,'completed');
+  assert.deepEqual(task.items.find(item=>item.name==='omd_github_get_issue').result,issue);
 });
